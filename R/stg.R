@@ -147,21 +147,27 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 		cat(paste0("G0 X", min(stl[,"x"]), " Y", min(stl[,"y"]), "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
 		desired_z <- depth_passes[depth_index]
-		if(depth_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in smoother surface
-			for (x_index in seq_along(x_positions)) {
-				stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
-				stl_slice <- stl_slice[order(stl_slice[,"y"], decreasing=FALSE),]
-				valid_stl <- (stl_slice[,"z"]<=desired_z)
-				start_position <- NULL
-				stop_position <- NULL
-
-# now from this vector figure out where the start and stop are: go to the first start, move down, move over to the first stop, pull up, move to the next start, etc. Worry about an odd number of segments (there could be one position that is a start and a stop)
-				
+		for (x_index in seq_along(x_positions)) {
+			stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
+			stl_slice <- stl_slice[order(stl_slice[,"y"], decreasing=FALSE),]
+			valid_stl_indices <- (stl_slice[,"z"]<=desired_z)
+			start_position <- NULL
+			stop_position <- NULL
+			if(x_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in less travel
+				valid_y_indices <- rev(valid_y_indices)
+				valid_stl_indices <- rev(valid_stl_indices)
 			}
 
-		} else {
+# now from this vector figure out where the start and stop are: go to the first start, move down, move over to the first stop, pull up, move to the next start, etc. Worry about an odd number of segments (there could be one position that is a start and a stop)
+			if(length(valid_y)>0) {
+				cat(paste0("G0 X", x_positions[x_index], " Y", y_positions[valid_y_indices[1]], "\n"), file=gcode_file, append=TRUE) #shoot over to the first position where we will plunge for this row
+				cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+				valid_y_indices <- valid_y_indices[-1] #we took care of the first point, now repeat
 
+			}
 		}
+
+		
 	}
 
 
