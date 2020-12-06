@@ -53,10 +53,7 @@ stl_dimensions <- function(stl) {
 #' cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
 #' cat_paw_reg <- stl_regularize(cat_paw)
 stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomleft", zero_position_z="top", verbose=TRUE) {
-	ranges <- as.data.frame(stl_dimensions(stl))
-	xwidth <- abs(diff(ranges$x))
-	ywidth <- abs(diff(ranges$y))
-	zwidth <- abs(diff(ranges$z))
+
 
 	if(verbose) {
 		print(paste0("The stl is ", xwidth, " units wide (left to right, x), ", ywidth, " units tall (forward and back, y), and ", zwidth, " units deep (up and down into the material, z). Typically these units are mm, but it may vary with CNC."))
@@ -75,6 +72,12 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 	if(zero_position_z=="bottom") {
 		stl[,"z"] <- stl[,"z"]-min(stl[,"z"])
 	}
+
+	ranges <- as.data.frame(stl_dimensions(stl))
+	xwidth <- abs(diff(ranges$x))
+	ywidth <- abs(diff(ranges$y))
+	zwidth <- abs(diff(ranges$z))
+
 	maxwidth <- max(xwidth, ywidth) # so we do a grid with same resolution for x and y
 	minratio <- min(xwidth, ywidth)/maxwidth
 	original_npoints_per_dim <- round(sqrt(fineness*nrow(stl)/minratio))
@@ -136,7 +139,31 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	cat(ifelse(unit=="mm", "G21\n", "G20\n"), file=gcode_file, append=FALSE) #set the units used
 	cat(paste0("M3 S", spin_speed, "\n"), file=gcode_file, append=TRUE) #start spindle turning clockwise at specified speed
 	cat("G90\n", file=gcode_file, append=TRUE) #specify absolute coding
-	cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+	
+	depth_passes <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(stepdown_depth))[-1] #how deep each pass should be, but eliminating the first pass at zero depth
+	x_positions <- sort(unique(stl[,"x"]), decreasing=FALSE)
+	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
+	for (depth_index in seq_along(depth_passes)) {
+		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+		cat(paste0("G0 X", min(stl[,"x"]), " Y", min(stl[,"y"]), "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
+		desired_z <- depth_passes[depth_index]
+		if(depth_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in smoother surface
+			for (x_index in seq_along(x_positions)) {
+				stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
+				stl_slice <- stl_slice[order(stl_slice[,"y"], decreasing=FALSE),]
+				valid_stl <- (stl_slice[,"z"]<=desired_z)
+				start_position <- NULL
+				stop_position <- NULL
+
+# now from this vector figure out where the start and stop are: go to the first start, move down, move over to the first stop, pull up, move to the next start, etc. Worry about an odd number of segments (there could be one position that is a start and a stop)
+				
+			}
+
+		} else {
+
+		}
+	}
+
 
 
 
