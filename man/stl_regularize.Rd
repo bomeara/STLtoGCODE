@@ -10,6 +10,7 @@ stl_regularize(
   nmax = 20,
   zero_position_xy = "bottomleft",
   zero_position_z = "top",
+  max_dimension = NULL,
   verbose = TRUE
 )
 }
@@ -25,6 +26,8 @@ stl_regularize(
 \item{zero_position_z}{can be "top", "bottom", or "current".}
 
 \item{verbose}{if TRUE, report on progress}
+
+\item{set_max_dimension}{if not NULL, rescales the object so the maximum width or length is this size}
 }
 \value{
 A matrix with x, y, and z points; x and y are evenly spaced grid
@@ -34,6 +37,8 @@ The STL object might only be defined over a certain area: a model of a mountain 
 }
 \details{
 zero_position resets the x and y positions so that (0,0) can be the bottom left of the structure ("bottomleft"), the center ("center"), or kept as is ("current")
+
+STL files might need to be rescaled. If  set_max_dimension is set to a number, the x, y, and z dimensions are set so that the largest width or length is this value and the other dimensions are scaled correctly.
 }
 \examples{
 cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")

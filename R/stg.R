@@ -40,19 +40,22 @@ stl_dimensions <- function(stl) {
 #' The STL object might only be defined over a certain area: a model of a mountain might stop at the irregular base. The points might also not be on a regular grid, which makes the analysis in R difficult. So we will use a technique called kriging to smoothly interpolate the points. The question is how fine to make the final grid: does it have as many points as the original points, or is it finer? By default it will have 5 points between every given point on each dimension. If it's too large, consider using meshlab to scale it down well before loading here.
 #' 
 #' zero_position resets the x and y positions so that (0,0) can be the bottom left of the structure ("bottomleft"), the center ("center"), or kept as is ("current")
-#' 
+#'
+#' STL files might need to be rescaled. If  set_max_dimension is set to a number, the x, y, and z dimensions are set so that the largest width or length is this value and the other dimensions are scaled correctly.
+#'
 #' @param stl object from stl_load()
 #' @param fineness how many points to make for each point per dimension in the original stl
 #' @param nmax how many nearby points to use for kriging. Inf to use all points.
 #' @param zero_position_xy can be "bottomleft", "center", or "current".
 #' @param zero_position_z can be "top", "bottom", or "current".
+#' @param set_max_dimension if not NULL, rescales the object so the maximum width or length is this size
 #' @param verbose if TRUE, report on progress
 #' @return A matrix with x, y, and z points; x and y are evenly spaced grid
 #' @export
 #' @examples
 #' cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
 #' cat_paw_reg <- stl_regularize(cat_paw)
-stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomleft", zero_position_z="top", verbose=TRUE) {
+stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomleft", zero_position_z="top", max_dimension=NULL, verbose=TRUE) {
 
 
 	if(verbose) {
@@ -73,12 +76,25 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 		stl[,"z"] <- stl[,"z"]-min(stl[,"z"])
 	}
 
+
 	ranges <- as.data.frame(stl_dimensions(stl))
 	xwidth <- abs(diff(ranges$x))
 	ywidth <- abs(diff(ranges$y))
 	zwidth <- abs(diff(ranges$z))
-
 	maxwidth <- max(xwidth, ywidth) # so we do a grid with same resolution for x and y
+
+	if(!is.null(set_max_dimension)) {
+		scaling_factor <- set_max_dimension/maxwidth
+		stl[,"x"] <- stl[,"x"] * scaling_factor
+		stl[,"y"] <- stl[,"y"] * scaling_factor
+		stl[,"z"] <- stl[,"z"] * scaling_factor
+		ranges <- as.data.frame(stl_dimensions(stl))
+		xwidth <- abs(diff(ranges$x))
+		ywidth <- abs(diff(ranges$y))
+		zwidth <- abs(diff(ranges$z))
+		maxwidth <- max(xwidth, ywidth) # so we do a grid with same resolution for x and y
+	}
+
 	minratio <- min(xwidth, ywidth)/maxwidth
 	original_npoints_per_dim <- round(sqrt(fineness*nrow(stl)/minratio))
 	
@@ -150,7 +166,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		cat(paste0("G0 X", starting_x, " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
 		desired_z <- depth_passes[depth_index]
 		for (x_index in seq_along(x_positions)) {
-			x_carve_position <- x_positions[x_index],]
+			x_carve_position <- x_positions[x_index]
 			stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
 			stl_slice <- stl_slice[order(stl_slice[,"y"], decreasing=FALSE),]
 			valid_stl_indices <- (stl_slice[,"z"]<=desired_z)
