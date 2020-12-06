@@ -1,0 +1,44 @@
+Package: STLtoGCODE
+Title: Converts STL 3d file to GCODE for CNC
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Brian",
+           family = "O'Meara",
+           role = c("aut", "cre"),
+           email = "omeara.brian@gmail.com",
+           comment = c(ORCID = "0000-0002-0337-5997"))
+Description: STL files are commonly used to transmit 3D models.
+    There are many tools to use to tell a 3D printer that builds up models
+    how to convert that file to instructions to the machine. There is
+    software to do the same for telling a machine that uses a spinning
+    tool to remove material to make a model (CNC mills), but these can be
+    complex (FreeCAD) and sometimes expensive (much commercial software),
+    and may not work on all platforms (pycam). STLtoGCODE is a simple
+    approach that converts an STL file to the basic GCODE used for
+    controlling a CNC -- it has far fewer features than commercial or
+    other open source tools (no custom bit shapes, no clever algorithms
+    for spiral cuts, outlining) but it's a fast way to go from an STL file
+    to instructions that will run on a typical small garage CNC. Note this
+    works for "2.5D" objects: things that are relief (think about a model
+    of the Grand Canyon or Mount Fuji, rather than a sphere) -- it's for a
+    home CNC that can only remove material from the top down. All software
+    may have bugs, and these can have real world impacts -- you do not
+    want an automated IV pump to dispense the wrong dosage, or banking
+    software to lose your deposit. This package makes code to have an
+    expensive robot put a quickly spinning piece of metal into wood or
+    some other hard material and drag it around. Things can go very wrong.
+    Please inspect the GCODE it creates and verify that it will work for
+    your machine and your set up. If you cannot verify this, you should
+    not use this tool. This code may have mistakes that could lead to
+    potentially catastrophic mistakes if you trust it. I am creating it
+    for my own use, but I believe in the open source ethos and encourage
+    competent people to improve this code.
+License: MIT + file LICENSE
+Imports: 
+    gstat,
+    rgl,
+    sp
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
