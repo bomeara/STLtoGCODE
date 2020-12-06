@@ -144,8 +144,12 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	x_positions <- sort(unique(stl[,"x"]), decreasing=FALSE)
 	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
 	for (depth_index in seq_along(depth_passes)) {
+		starting_y <- min(stl[,"y"])
+		if(x_index%%2==0) {
+			starting_y <- max(stl[,"y"]) #start at opposite ends
+		}
 		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
-		cat(paste0("G0 X", min(stl[,"x"]), " Y", min(stl[,"y"]), "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
+		cat(paste0("G0 X", min(stl[,"x"]), " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
 		desired_z <- depth_passes[depth_index]
 		for (x_index in seq_along(x_positions)) {
 			stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
