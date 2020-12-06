@@ -145,37 +145,42 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
 	for (depth_index in seq_along(depth_passes)) {
 		starting_y <- min(stl[,"y"])
-		if(x_index%%2==0) {
-			starting_y <- max(stl[,"y"]) #start at opposite ends
-		}
+		starting_x <- min(stl[,"x"])
 		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
-		cat(paste0("G0 X", min(stl[,"x"]), " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
+		cat(paste0("G0 X", starting_x, " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
 		desired_z <- depth_passes[depth_index]
 		for (x_index in seq_along(x_positions)) {
+			x_carve_position <- x_positions[x_index],]
 			stl_slice <- stl[stl[,"x"]==x_positions[x_index],]
 			stl_slice <- stl_slice[order(stl_slice[,"y"], decreasing=FALSE),]
 			valid_stl_indices <- (stl_slice[,"z"]<=desired_z)
-			start_position <- NULL
-			stop_position <- NULL
 			if(x_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in less travel
 				valid_y_indices <- rev(valid_y_indices)
-				valid_stl_indices <- rev(valid_stl_indices)
 			}
 
 # now from this vector figure out where the start and stop are: go to the first start, move down, move over to the first stop, pull up, move to the next start, etc. Worry about an odd number of segments (there could be one position that is a start and a stop)
-			if(length(valid_y)>0) {
-				cat(paste0("G0 X", x_positions[x_index], " Y", y_positions[valid_y_indices[1]], "\n"), file=gcode_file, append=TRUE) #shoot over to the first position where we will plunge for this row
+			if(length(valid_y_indices)>0) {
+				cat(paste0("G0 X", x_carve_position, " Y", y_positions[valid_y_indices[1]], "\n"), file=gcode_file, append=TRUE) #shoot over to the first position where we will plunge for this row
 				cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 				valid_y_indices <- valid_y_indices[-1] #we took care of the first point, now repeat
-
+				while(length(valid_y_indices)>0) {
+					cat(paste0("G1 X", x_carve_position, " Y", y_positions[valid_y_indices[1]], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #shoot over to the first position where we will plunge for this row
+					valid_y_indices <- valid_y_indices[-1] #we now moved over to the last point before having to go up
+					cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+					if(length(valid_y_indices)>0) {
+						cat(paste0("G0 X", x_carve_position, " Y", y_positions[valid_y_indices[1]], "\n"), file=gcode_file, append=TRUE) #shoot over to the first position where we will plunge for this row
+						cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+						valid_y_indices <- valid_y_indices[-1] #we now handled the next point
+					}
+				}
 			}
-		}
+			cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
+		} # end x positions loop for this depth
 
 		
-	}
-
-
-
-
-
+	} # end depth_passes loop
+	cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way, though should already be clear
+	cat(paste0("G0 X", starting_x, " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
+	cat(paste0("M05"), file=gcode_file, append=TRUE) #shoot over to the starting position
+	print(paste0("Done, saved to ", gcode_file))
 }
