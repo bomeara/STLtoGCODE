@@ -245,9 +245,11 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		}
 		for(y_index in seq_along(y_positions_actual)) {
 			stl_smooth_pass[focal_row,] <- stl[stl[,"x"]==x_positions[x_index] & stl[,"y"]==y_positions[y_index],] #so this gives us the stl in an order to go back and forth
+			focal_row <- focal_row+1
 		}
 		pb$tick()
 	}
+
 
 	if(verbose) {
 		print("Did first reordering of object, now saving passes from smoothing step")
@@ -263,7 +265,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 
 	for (move_index in 2:nrow(stl_smooth_pass)){
 		height_diff <- stl_smooth_pass[move_index,"z"]-stl_smooth_pass[move_index-1,"z"] # how big a change in height between where we are and our next position
-		if(!final_pass_smoothly | abs(height_diff) > final_pass_smoothly_height) { # too far
+		if(!final_pass_smoothly | (abs(height_diff) > final_pass_smoothly_height)) { # too far
 			cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 			cat(paste0("G0 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], "\n"), file=gcode_file, append=TRUE) #move to the next position in xy
 			cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
@@ -293,6 +295,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 			}
 			for(x_index in seq_along(x_positions_actual)) {
 				stl_smooth_pass[focal_row,] <- stl[stl[,"x"]==x_positions[x_index] & stl[,"y"]==y_positions[y_index],] #so this gives us the stl in an order to go back and forth
+				focal_row <- focal_row+1
 			}
 			pb$tick()
 		}
@@ -311,7 +314,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 
 		for (move_index in 2:nrow(stl_smooth_pass)){
 			height_diff <- stl_smooth_pass[move_index,"z"]-stl_smooth_pass[move_index-1,"z"] # how big a change in height between where we are and our next position
-			if(!final_pass_smoothly | abs(height_diff) > final_pass_smoothly_height) { # too far
+			if(!final_pass_smoothly | (abs(height_diff) > final_pass_smoothly_height)) { # too far
 				cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 				cat(paste0("G0 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], "\n"), file=gcode_file, append=TRUE) #move to the next position in xy
 				cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
