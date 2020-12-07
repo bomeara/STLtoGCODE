@@ -36,6 +36,7 @@ Description: STL files are commonly used to transmit 3D models.
 License: MIT + file LICENSE
 Imports: 
     gstat,
+    progress,
     rgl,
     sp
 Encoding: UTF-8

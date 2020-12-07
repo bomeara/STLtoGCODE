@@ -10,7 +10,7 @@ stl_regularize(
   nmax = 20,
   zero_position_xy = "bottomleft",
   zero_position_z = "top",
-  max_dimension = NULL,
+  set_max_dimension = NULL,
   verbose = TRUE
 )
 }
@@ -25,9 +25,9 @@ stl_regularize(
 
 \item{zero_position_z}{can be "top", "bottom", or "current".}
 
-\item{verbose}{if TRUE, report on progress}
-
 \item{set_max_dimension}{if not NULL, rescales the object so the maximum width or length is this size}
+
+\item{verbose}{if TRUE, report on progress}
 }
 \value{
 A matrix with x, y, and z points; x and y are evenly spaced grid

@@ -12,6 +12,8 @@ stl_generate_gcode(
   vertical_speed = 9,
   stepover_height = 0.2,
   stepdown_depth = 0.02,
+  final_pass_smoothly = TRUE,
+  final_pass_smoothly_height = NULL,
   unit = "inches",
   unit_precision = 5,
   verbose = TRUE
@@ -32,6 +34,10 @@ stl_generate_gcode(
 
 \item{stepdown_depth}{how much lower to move the spindle each pass}
 
+\item{final_pass_smoothly}{if TRUE, for the final pass smoothly move between heights that do not differ by too much. If FALSE, move up to the stepover_height between every pair of points}
+
+\item{final_pass_smoothly_height}{if how much of a difference is too high between to points to go through it smoothly rather than by going up and back down. If NULL, uses twice stepdown_depth. To always smoothly move between points, use Inf}
+
 \item{unit}{"inches" or "mm"}
 
 \item{unit_precision}{how many digits to use after the decimal point}
@@ -48,6 +54,6 @@ The algorithm I use here is very basic -- essentially moving back and forth like
 }
 \examples{
 cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
-cat_paw_reg <- stl_regularize(cat_paw)
+cat_paw_reg <- stl_regularize(cat_paw, set_max_dimension=2)
 stl_generate_gcode(cat_paw_reg, gcode_file="~/Downloads/cat.nc")
 }
