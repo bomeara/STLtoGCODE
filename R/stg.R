@@ -150,6 +150,10 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 #' cat_paw_reg <- stl_regularize(cat_paw, set_max_dimension=2)
 #' stl_generate_gcode(cat_paw_reg, gcode_file="~/Downloads/cat.nc")
 stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, horizontal_speed=30, vertical_speed=9, stepover_height = 0.2, stepdown_depth=0.02, final_pass_smoothly=TRUE, final_pass_smoothly_height=NULL, unit="inches", unit_precision=5, verbose=TRUE) {
+	#we need to turn off scientific notation so there aren't odd errors in output
+	original_scipen <- getOption('scipen')
+	options(scipen = 999)
+
 	ranges <- as.data.frame(stl_dimensions(stl))
 	stl <- round(stl, unit_precision)
 	xwidth <- abs(diff(ranges$x))
@@ -327,4 +331,5 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	}
 	cat(paste0("M05"), file=gcode_file, append=TRUE) #shoot over to the starting position
 	print(paste0("Done, saved to ", gcode_file))
+	options(scipen = original_scipen)
 }
