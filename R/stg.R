@@ -196,7 +196,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		stl_slice <- outer_margins[[margin_index]]
 		stl_slice <- stl_slice[order(stl_slice[,"x"], stl_slice[,"y"], decreasing=FALSE),] # make sure in order
 		for (depth_index in seq_along(depth_passes)) {
-			stl_slice <- stl_slice[rev(sequence(nrow(stl_slice)))] # so we go back and forth
+			stl_slice <- stl_slice[rev(sequence(nrow(stl_slice))),] # so we go back and forth
 			desired_z <- depth_passes[depth_index]
 			valid_indices <- which(stl_slice[,"z"]<=desired_z)
 			previous_point <- NA
