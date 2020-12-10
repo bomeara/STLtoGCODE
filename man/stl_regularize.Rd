@@ -11,6 +11,7 @@ stl_regularize(
   zero_position_xy = "bottomleft",
   zero_position_z = "top",
   set_max_dimension = NULL,
+  z_scale = 1,
   verbose = TRUE
 )
 }
@@ -26,6 +27,8 @@ stl_regularize(
 \item{zero_position_z}{can be "top", "bottom", or "current".}
 
 \item{set_max_dimension}{if not NULL, rescales the object so the maximum width or length is this size}
+
+\item{z_scale}{multiply the z by a factor. If greater than 1, relief is increased, if less than 1, the object is flattened}
 
 \item{verbose}{if TRUE, report on progress}
 }

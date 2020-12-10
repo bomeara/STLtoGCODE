@@ -10,8 +10,8 @@ stl_generate_gcode(
   spin_speed = 12000,
   horizontal_speed = 30,
   vertical_speed = 9,
-  stepover_height = 0.2,
-  stepdown_depth = 0.02,
+  stepover_height = 0.05,
+  stepdown_depth = 0.03,
   final_pass_smoothly = TRUE,
   final_pass_smoothly_height = NULL,
   unit = "inches",
@@ -50,7 +50,7 @@ The defaults work for my machine (a MySweety 3018) but you should check this for
 \details{
 Remember, this code is not guaranteed to work! And it is code telling an expensive robot how to move very quickly moving bits of metal across resisting surfaces. If it goes wrong, it can go VERY wrong: damaging your machine, damaging the materials, setting things on fire, hurting people. Use at your own risk, and I strongly suggesting seeking out better options (like FreeCAD) if they are available to you. The settings seem to work for my machine, but they could be too fast or slow for yours, make sure you don't try to engrave something too large, etc. You can run your code at https://nraynaud.github.io/webgcode/ to see what it will look like and how long it will take.
 
-The algorithm I use here is very basic -- essentially moving back and forth like a farmer plowing their field. There are far more clever algorithms like spiraling, climbing cuts, etc. This also does not focus on the tool size: basically, it moves the bottom tip of the tool back and forth along each line specified in the object, moving a little bit downward each time.
+The algorithm I use here is very basic. It first does the outer margin of the object: the left, right, top, and bottom of the area to carve in. Then it essentially moving back and forth like a farmer plowing their field within this region, moving down by a fixed step size each time. Finally, it does a smoothing pass where the tool can move up and down while moving left and right or forward and back. There are far more clever algorithms like spiraling, climbing cuts, etc. This also does not focus on the tool size: basically, it moves the bottom tip of the tool back and forth along each line specified in the object, moving a little bit downward each time.
 }
 \examples{
 cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
