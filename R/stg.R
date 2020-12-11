@@ -139,7 +139,8 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 #' @param gcode_file path to use to store gcode output
 #' @param spin_speed how fast to rotate the spindle
 #' @param horizontal_speed how fast to move the spindle when cutting horizontally
-#' @param vertical_speed how fast to move the spindle when moving down or up
+#' @param down_speed how fast to move the spindle when moving down
+#' @param up_speed how fast to move the spindle when moving up
 #' @param stepover_height how high to move the spindle over an obstacle
 #' @param stepdown_depth how much lower to move the spindle each pass
 #' @param final_pass_smoothly if TRUE, for the final pass smoothly move between heights that do not differ by too much. If FALSE, move up to the stepover_height between every pair of points
@@ -152,7 +153,7 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 #' cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
 #' cat_paw_reg <- stl_regularize(cat_paw, set_max_dimension=2)
 #' stl_generate_gcode(cat_paw_reg, gcode_file="~/Downloads/cat.nc")
-stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, horizontal_speed=30, vertical_speed=9, stepover_height = 0.05, stepdown_depth=0.03, final_pass_smoothly=TRUE, final_pass_smoothly_height=NULL, unit="inches", unit_precision=5, verbose=TRUE) {
+stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, horizontal_speed=20, down_speed=5, up_speed=9, stepover_height = 0.05, stepdown_depth=0.02, final_pass_smoothly=TRUE, final_pass_smoothly_height=NULL, unit="inches", unit_precision=5, verbose=TRUE) {
 	#we need to turn off scientific notation so there aren't odd errors in output
 	original_scipen <- getOption('scipen')
 	options(scipen = 999)
@@ -170,11 +171,12 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	cat("G90\n", file=gcode_file, append=TRUE) #specify absolute coding
 	
 	depth_passes <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(stepdown_depth))[-1] #how deep each pass should be, but eliminating the first pass at zero depth
+	depth_passes_margin <- 0.5 * depth_passes #since there's less space for the waste to go, remove less per pass
 	x_positions <- sort(unique(stl[,"x"]), decreasing=FALSE)
 	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
 	starting_y <- min(stl[,"y"])
 	starting_x <- min(stl[,"x"])
-	cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+	cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 	cat(paste0("G0 X", starting_x, " Y", starting_y, "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
 
 	# first do loops on the outer margin
@@ -195,33 +197,33 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	for(margin_index in seq_along(outer_margins)) {
 		stl_slice <- outer_margins[[margin_index]]
 		stl_slice <- stl_slice[order(stl_slice[,"x"], stl_slice[,"y"], decreasing=FALSE),] # make sure in order
-		for (depth_index in seq_along(depth_passes)) {
+		for (depth_index in seq_along(depth_passes_margin)) {
 			stl_slice <- stl_slice[rev(sequence(nrow(stl_slice))),] # so we go back and forth
-			desired_z <- depth_passes[depth_index]
+			desired_z <- depth_passes_margin[depth_index]
 			valid_indices <- which(stl_slice[,"z"]<=desired_z)
 			previous_point <- NA
 			if(length(valid_indices)>0) {
-				cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+				cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 				cat(paste0("G0 X", stl_slice[1,"x"], " Y", stl_slice[1,"y"], "\n"), file=gcode_file, append=TRUE) #shoot over to the next position where we will plunge for this cut
-				cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+				cat(paste0("G1 Z", desired_z, " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 				for (position_index in seq_along(valid_indices)) {
 					if(position_index==1) {
 						cat(paste0("G0 X", stl_slice[valid_indices[position_index],"x"], " Y", stl_slice[valid_indices[position_index],"y"], "\n"), file=gcode_file, append=TRUE) #shoot over to the next position where we will plunge for this row
-						cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+						cat(paste0("G1 Z", desired_z, " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 
 					} else {
 						if(abs(previous_point - valid_indices[position_index]) != 1) { #we have a gap before this point, so finish the previous cut, move up and over, and back in. This works if we go forward or backward with y
 							cat(paste0("G1 X", stl_slice[previous_point,"x"], " Y", stl_slice[previous_point,"y"], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #drive over to the previous point from the plunge earlier
-							cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+							cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 							cat(paste0("G0 X", stl_slice[valid_indices[position_index],"x"], " Y", stl_slice[valid_indices[position_index],"y"], "\n"), file=gcode_file, append=TRUE) #shoot over to the next position where we will plunge for this row
-							cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+							cat(paste0("G1 Z", desired_z, " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 						}
 					}
 					previous_point <- valid_indices[position_index]
 
 				}
 				cat(paste0("G1 X", stl_slice[valid_indices[position_index],"x"], " Y", stl_slice[valid_indices[position_index],"y"], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #mill over to the last point
-				cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+				cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 			}
 		}
 	}
@@ -259,20 +261,20 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 					#if(x_index>3) {stop()}
 					if(y_index==1) {
 						cat(paste0("G0 X", x_carve_position, " Y", y_positions[valid_y_indices[y_index]], "\n"), file=gcode_file, append=TRUE) #shoot over to the next position where we will plunge for this row
-						cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+						cat(paste0("G1 Z", desired_z, " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 
 					} else {
 						if(abs(previous_point - valid_y_indices[y_index]) != 1) { #we have a gap before this point, so finish the previous cut, move up and over, and back in. This works if we go forward or backward with y
 							cat(paste0("G1 X", x_carve_position, " Y", y_positions[previous_point], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #drive over to the previous point from the plunge earlier
-							cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+							cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 							cat(paste0("G0 X", x_carve_position, " Y", y_positions[valid_y_indices[y_index]], "\n"), file=gcode_file, append=TRUE) #shoot over to the next position where we will plunge for this row
-							cat(paste0("G1 Z", desired_z, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
+							cat(paste0("G1 Z", desired_z, " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #plunge to start the cut
 						}
 					}
 					previous_point <- valid_y_indices[y_index]
 				}
 				cat(paste0("G1 X", x_carve_position, " Y", y_positions[valid_y_indices[length(valid_y_indices)]], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #mill over to the last point
-				cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
+				cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 			}
 		} # end x positions loop for this depth
 	} # end depth_passes loop
@@ -316,9 +318,9 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		print("Did first reordering of object, now saving passes from smoothing step")
 	}
 
-	cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way, though should already be clear
+	cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way, though should already be clear
 	cat(paste0("G0 X", stl_smooth_pass[1,"x"], " Y", stl_smooth_pass[1,"y"], "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
-	cat(paste0("G1 Z", stl_smooth_pass[1,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go down to start cutting
+	cat(paste0("G1 Z", stl_smooth_pass[1,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go down to start cutting
 
 	pb <- progress::progress_bar$new(
 	format = " saving moves [:bar] :percent eta: :eta",
@@ -327,15 +329,15 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	for (move_index in 2:nrow(stl_smooth_pass)){
 		height_diff <- stl_smooth_pass[move_index,"z"]-stl_smooth_pass[move_index-1,"z"] # how big a change in height between where we are and our next position
 		if(!final_pass_smoothly | (abs(height_diff) > final_pass_smoothly_height)) { # too far
-			cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
+			cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 			cat(paste0("G0 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], "\n"), file=gcode_file, append=TRUE) #move to the next position in xy
-			cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
+			cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
 		} else {
-			cat(paste0("G1 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], " Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #smoothly move to next point
+			cat(paste0("G1 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], " Z", stl_smooth_pass[move_index,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #smoothly move to next point
 		}
 		pb$tick()
 	}
-	cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
+	cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 
 	if(final_pass_smoothly) { #do it again, but moving along y rather than x. Note this code is largely duplicated from above, which is BAD CODING PRACTICE
 		if(verbose) {
@@ -361,9 +363,9 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 			pb$tick()
 		}
 
-		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way, though should already be clear
+		cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way, though should already be clear
 		cat(paste0("G0 X", stl_smooth_pass[1,"x"], " Y", stl_smooth_pass[1,"y"], "\n"), file=gcode_file, append=TRUE) #shoot over to the starting position
-		cat(paste0("G1 Z", stl_smooth_pass[1,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go down to start cutting
+		cat(paste0("G1 Z", stl_smooth_pass[1,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go down to start cutting
 
 		if(verbose) {
 			print("Saving final smoothing pass")
@@ -376,15 +378,15 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		for (move_index in 2:nrow(stl_smooth_pass)){
 			height_diff <- stl_smooth_pass[move_index,"z"]-stl_smooth_pass[move_index-1,"z"] # how big a change in height between where we are and our next position
 			if(!final_pass_smoothly | (abs(height_diff) > final_pass_smoothly_height)) { # too far
-				cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
+				cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 				cat(paste0("G0 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], "\n"), file=gcode_file, append=TRUE) #move to the next position in xy
-				cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
+				cat(paste0("G1 Z", stl_smooth_pass[move_index,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #and drill down
 			} else {
-				cat(paste0("G1 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], " Z", stl_smooth_pass[move_index,"z"], " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #smoothly move to next point
+				cat(paste0("G1 X", stl_smooth_pass[move_index,"x"], " Y", stl_smooth_pass[move_index,"y"], " Z", stl_smooth_pass[move_index,"z"], " F", down_speed, "\n"),  file=gcode_file, append=TRUE) #smoothly move to next point
 			}
 			pb$tick()
 		}
-		cat(paste0("G1 Z", stepover_height, " F", vertical_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
+		cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's get out of the way
 	}
 	cat(paste0("M05"), file=gcode_file, append=TRUE) #shoot over to the starting position
 	print(paste0("Done, saved to ", gcode_file))
