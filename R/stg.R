@@ -303,11 +303,12 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	focal_row <- 1
 	for (x_index in seq_along(x_positions)) {
 		y_positions_actual <- y_positions
+		stl_x <- stl[stl[,"x"]==x_positions[x_index],]
 		if(x_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in less travel
 			y_positions_actual <- rev(y_positions_actual)
 		}
 		for(y_index in seq_along(y_positions_actual)) {
-			stl_smooth_pass[focal_row,] <- stl[stl[,"x"]==x_positions[x_index] & stl[,"y"]==y_positions[y_index],] #so this gives us the stl in an order to go back and forth
+			stl_smooth_pass[focal_row,] <- stl_x[stl_x[,"y"]==y_positions[y_index],] #so this gives us the stl in an order to go back and forth
 			focal_row <- focal_row+1
 		}
 		pb$tick()
@@ -353,11 +354,13 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 		
 		for (y_index in seq_along(y_positions)) {
 			x_positions_actual <- x_positions
+			stl_y <- stl[stl[,"y"]==y_positions[y_index],]
+
 			if(y_index%%2==0) { #do odd passes in one direction, even passes in the other, to result in less travel
 				x_positions_actual <- rev(x_positions_actual)
 			}
 			for(x_index in seq_along(x_positions_actual)) {
-				stl_smooth_pass[focal_row,] <- stl[stl[,"x"]==x_positions[x_index] & stl[,"y"]==y_positions[y_index],] #so this gives us the stl in an order to go back and forth
+				stl_smooth_pass[focal_row,] <- stl_y[stl_y[,"x"]==x_positions[x_index] ,] #so this gives us the stl in an order to go back and forth
 				focal_row <- focal_row+1
 			}
 			pb$tick()
