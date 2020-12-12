@@ -171,7 +171,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	cat("G90\n", file=gcode_file, append=TRUE) #specify absolute coding
 	
 	depth_passes <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(stepdown_depth))[-1] #how deep each pass should be, but eliminating the first pass at zero depth
-	depth_passes_margin <- 0.5 * depth_passes #since there's less space for the waste to go, remove less per pass
+	depth_passes_margin <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(0.5 * stepdown_depth))[-1] #since there's less space for the waste to go on the margin moves, remove less per pass
 	x_positions <- sort(unique(stl[,"x"]), decreasing=FALSE)
 	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
 	starting_y <- min(stl[,"y"])
