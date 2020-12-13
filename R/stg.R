@@ -49,6 +49,7 @@ stl_dimensions <- function(stl) {
 #' @param zero_position_xy can be "bottomleft", "center", or "current".
 #' @param zero_position_z can be "top", "bottom", or "current".
 #' @param set_max_dimension if not NULL, rescales the object so the maximum width or length is this size
+#' @param set_min_xy_step if not zero, changes fineness until the step size is this. Good for detailed stls where the steps would be too small
 #' @param z_scale multiply the z by a factor. If greater than 1, relief is increased, if less than 1, the object is flattened
 #' @param verbose if TRUE, report on progress
 #' @return A matrix with x, y, and z points; x and y are evenly spaced grid
@@ -56,7 +57,7 @@ stl_dimensions <- function(stl) {
 #' @examples
 #' cat_paw <- stl_load("~/Downloads/catsnowscaled.stl")
 #' cat_paw_reg <- stl_regularize(cat_paw)
-stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomleft", zero_position_z="top", set_max_dimension=NULL, z_scale=1, verbose=TRUE) {
+stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomleft", zero_position_z="top", set_max_dimension=NULL, set_min_xy_step=0, z_scale=1, verbose=TRUE) {
 
 
 	
@@ -104,16 +105,27 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 	minratio <- min(xwidth, ywidth)/maxwidth
 	original_npoints_per_dim <- round(sqrt(fineness*nrow(stl)/minratio))
 	
-	(fineness*max(length(unique(stl[,"x"])), length(unique(stl[,"y"]))))
+	#(fineness*max(length(unique(stl[,"x"])), length(unique(stl[,"y"]))))
 	# we might hit memory limits
 	new_array <- NULL
-	npoints_per_dim <- original_npoints_per_dim
+	npoints_per_dim <- min(original_npoints_per_dim, 1e6) #more than a million points is too much
 	stl_spatial <- sp::SpatialPoints(stl)
 	while(class(new_array)!="SpatialPoints") {
 		if(verbose) {
 			print(paste0("Now trying to create new array with ", round(npoints_per_dim*xwidth/maxwidth), " points per width (x) and ", round(npoints_per_dim*ywidth/maxwidth), " points per height (y) for ", round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth), " points total. The original object has ", nrow(stl), " points total, but these are typically not evenly spaced; the new matrix will be ", round(round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth) / nrow(stl),1), " times bigger."))
 		}
-		try(new_array <- sp::SpatialPoints(expand.grid(x=seq(from=min(ranges$x), to=max(ranges$x), length.out=round(npoints_per_dim*xwidth/maxwidth)), y=seq(from=min(ranges$y), to=max(ranges$y), length.out=round(npoints_per_dim*ywidth/maxwidth)))))
+
+		xvals=seq(from=min(ranges$x), to=max(ranges$x), length.out=round(npoints_per_dim*xwidth/maxwidth))
+		yvals=seq(from=min(ranges$y), to=max(ranges$y), length.out=round(npoints_per_dim*ywidth/maxwidth))
+		while (min(c(diff(sort(unique(xvals))), diff(sort(unique(yvals)))))<set_min_xy_step) {
+			if(verbose) {
+				print(paste0("The space between points was ", min(c(diff(sort(unique(xvals))), diff(sort(unique(yvals))))), " units apart, creating coarser grid"))
+			}
+			npoints_per_dim <- 0.9*npoints_per_dim
+			xvals=seq(from=min(ranges$x), to=max(ranges$x), length.out=round(npoints_per_dim*xwidth/maxwidth))
+			yvals=seq(from=min(ranges$y), to=max(ranges$y), length.out=round(npoints_per_dim*ywidth/maxwidth))
+		}
+		try(new_array <- sp::SpatialPoints(expand.grid(x=xvals, y=yvals)))
 		npoints_per_dim <- 0.1*npoints_per_dim
 	}
 	if(original_npoints_per_dim != 10*npoints_per_dim) {
