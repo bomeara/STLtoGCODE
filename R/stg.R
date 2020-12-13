@@ -126,11 +126,13 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 
 		if(verbose) {
 			print(paste0("Now trying to create new array with ", round(npoints_per_dim*xwidth/maxwidth), " points per width (x) and ", round(npoints_per_dim*ywidth/maxwidth), " points per length (y) for ", round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth), " points total. The original object has ", nrow(stl), " points total, but these are typically not evenly spaced; the new matrix will be ", round(round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth) / nrow(stl),1), " times bigger."))
-		}
-		
+		}	
+
 		try(new_array <- sp::SpatialPoints(expand.grid(x=xvals, y=yvals)))
 		npoints_per_dim <- 0.1*npoints_per_dim
 	}
+
+
 	if(original_npoints_per_dim != 10*npoints_per_dim) {
 		warning("The array with the desired fineness was too large for R, so the resolution was decreased")
 	}
