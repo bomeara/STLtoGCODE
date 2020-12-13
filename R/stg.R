@@ -108,12 +108,10 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 	#(fineness*max(length(unique(stl[,"x"])), length(unique(stl[,"y"]))))
 	# we might hit memory limits
 	new_array <- NULL
-	npoints_per_dim <- min(original_npoints_per_dim, 1e6) #more than a million points is too much
+	npoints_per_dim <- min(original_npoints_per_dim, 1e7) #more than 10 million points is way too much
 	stl_spatial <- sp::SpatialPoints(stl)
 	while(class(new_array)!="SpatialPoints") {
-		if(verbose) {
-			print(paste0("Now trying to create new array with ", round(npoints_per_dim*xwidth/maxwidth), " points per width (x) and ", round(npoints_per_dim*ywidth/maxwidth), " points per height (y) for ", round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth), " points total. The original object has ", nrow(stl), " points total, but these are typically not evenly spaced; the new matrix will be ", round(round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth) / nrow(stl),1), " times bigger."))
-		}
+
 
 		xvals=seq(from=min(ranges$x), to=max(ranges$x), length.out=round(npoints_per_dim*xwidth/maxwidth))
 		yvals=seq(from=min(ranges$y), to=max(ranges$y), length.out=round(npoints_per_dim*ywidth/maxwidth))
@@ -125,6 +123,11 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 			xvals=seq(from=min(ranges$x), to=max(ranges$x), length.out=round(npoints_per_dim*xwidth/maxwidth))
 			yvals=seq(from=min(ranges$y), to=max(ranges$y), length.out=round(npoints_per_dim*ywidth/maxwidth))
 		}
+
+		if(verbose) {
+			print(paste0("Now trying to create new array with ", round(npoints_per_dim*xwidth/maxwidth), " points per width (x) and ", round(npoints_per_dim*ywidth/maxwidth), " points per length (y) for ", round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth), " points total. The original object has ", nrow(stl), " points total, but these are typically not evenly spaced; the new matrix will be ", round(round(npoints_per_dim*xwidth/maxwidth) * round(npoints_per_dim*ywidth/maxwidth) / nrow(stl),1), " times bigger."))
+		}
+		
 		try(new_array <- sp::SpatialPoints(expand.grid(x=xvals, y=yvals)))
 		npoints_per_dim <- 0.1*npoints_per_dim
 	}
