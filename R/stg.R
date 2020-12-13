@@ -98,7 +98,7 @@ stl_regularize <- function(stl, fineness=10, nmax=20, zero_position_xy="bottomle
 	}
 
 	if(verbose) {
-		print(paste0("The stl is now ", xwidth, " units wide (left to right, x), ", ywidth, " units long (forward and back, y), and ", zwidth, " units deep (up and down into the material, z). Typically these units are mm, but it may vary with CNC."))
+		print(paste0("The stl is now ", round(xwidth,2), " units wide (left to right, x), ", round(ywidth,2), " units long (forward and back, y), and ", round(zwidth,2), " units deep (up and down into the material, z). Typically these units are mm, but it may vary with CNC."))
 	}
 
 	minratio <- min(xwidth, ywidth)/maxwidth
@@ -171,7 +171,6 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	cat("G90\n", file=gcode_file, append=TRUE) #specify absolute coding
 	
 	depth_passes <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(stepdown_depth))[-1] #how deep each pass should be, but eliminating the first pass at zero depth
-	depth_passes_margin <- seq(from=0, to=min(stl[,"z"]), by=-1*abs(0.5 * stepdown_depth))[-1] #since there's less space for the waste to go on the margin moves, remove less per pass
 	x_positions <- sort(unique(stl[,"x"]), decreasing=FALSE)
 	y_positions <- sort(unique(stl[,"y"]), decreasing=FALSE)
 	starting_y <- min(stl[,"y"])
@@ -193,13 +192,23 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 	)
 
 
+	# The above loop will not do the very bottom of the cut on the margins -- will wait for final detail cut
 
-	for(margin_index in seq_along(outer_margins)) {
-		stl_slice <- outer_margins[[margin_index]]
-		stl_slice <- stl_slice[order(stl_slice[,"x"], stl_slice[,"y"], decreasing=FALSE),] # make sure in order
-		for (depth_index in seq_along(depth_passes_margin)) {
-			stl_slice <- stl_slice[rev(sequence(nrow(stl_slice))),] # so we go back and forth
-			desired_z <- depth_passes_margin[depth_index]
+	for (depth_index in seq_along(depth_passes)) {
+		desired_z <- depth_passes[depth_index]
+
+		if(verbose) {
+			print(paste0("Now doing milling at ", depth_index, " steps down, ",desired_z, " ", unit, " into the piece."))
+		}
+
+
+
+		for(margin_index in seq_along(outer_margins)) {
+			stl_slice <- outer_margins[[margin_index]]
+			stl_slice <- stl_slice[order(stl_slice[,"x"], stl_slice[,"y"], decreasing=FALSE),] # make sure in order
+			if(depth_index%%2==1) {
+				stl_slice <- stl_slice[rev(sequence(nrow(stl_slice))),] # so we go back and forth
+			}
 			valid_indices <- which(stl_slice[,"z"]<=desired_z)
 			previous_point <- NA
 			if(length(valid_indices)>0) {
@@ -225,16 +234,7 @@ stl_generate_gcode <- function(stl, gcode_file='gcode.nc', spin_speed=12000, hor
 				cat(paste0("G1 X", stl_slice[valid_indices[position_index],"x"], " Y", stl_slice[valid_indices[position_index],"y"], " F", horizontal_speed, "\n"), file=gcode_file, append=TRUE) #mill over to the last point
 				cat(paste0("G1 Z", stepover_height, " F", up_speed, "\n"),  file=gcode_file, append=TRUE) #let's slowly go up to clear the piece
 			}
-		}
-	}
-
-	# The above loop will not do the very bottom of the cut on the margins -- will wait for final detail cut
-
-	for (depth_index in seq_along(depth_passes)) {
-		desired_z <- depth_passes[depth_index]
-
-		if(verbose) {
-			print(paste0("Now doing milling at ", depth_index, " steps down, ",desired_z, " ", unit, " into the piece."))
+			
 		}
 
 		
